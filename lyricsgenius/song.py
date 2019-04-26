@@ -97,7 +97,7 @@ class Song(object):
         keepchars = (" ", ".", "_")
         return "".join(c for c in f if c.isalnum() or c in keepchars).rstrip()
 
-    def save_lyrics(self, filename=None, extension='json', verbose=True,
+    def save_lyrics(self, filename=None,  extension='json', folder = None, verbose=True,
                     overwrite=None, binary_encoding=False):
         """Allows user to save song lyrics from Song object to a .json or .txt file."""
         extension = extension.lstrip(".")
@@ -113,6 +113,11 @@ class Song(object):
                                                 self.title.replace(" ", ""),
                                                 extension).lower()
             filename = self._sanitize_filename(filename)
+
+        if folder:
+            if not os.path.isdir(folder):
+                os.mkdir(folder)
+            filename = os.path.join(folder, filename)
 
         # Check if file already exists
         write_file = False

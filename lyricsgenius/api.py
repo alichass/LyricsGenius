@@ -333,7 +333,7 @@ class Genius(API):
             print('Done. Found {n} songs.'.format(n=artist.num_songs))
         return artist
 
-    def save_artists(self, artists, filename="artist_lyrics", overwrite=False):
+    def save_artists(self, artists, filename="artist_lyrics", overwrite=False, folder = None):
         """Save lyrics from multiple Artist objects as JSON object
         :param artists: List of Artist objects to save lyrics from
         :param filename: Name of output file (json)
@@ -342,14 +342,12 @@ class Genius(API):
         if isinstance(artists, Artist):
             artists = [artists]
 
-        # Create a temporary directory for lyrics
         start = time.time()
-        tmp_dir = 'tmp_lyrics'
-        if not os.path.isdir(tmp_dir):
-            os.mkdir(tmp_dir)
-            count = 0
-        else:
-            count = len(os.listdir(tmp_dir))
+        # Create a temporary directory for lyrics
+        if not folder:
+            tmp_dir = 'tmp_lyrics'
+            if not os.path.isdir(tmp_dir):
+                os.mkdir(tmp_dir)
 
         # Check if file already exists
         if os.path.isfile(filename + ".json") and not overwrite:
@@ -364,18 +362,14 @@ class Genius(API):
         for n, artist in enumerate(artists):
             if isinstance(artist, Artist):
                 all_lyrics['artists'].append({})
-                f = "tmp_{n}_{a}".format(n=count + n,
-                                         a=artist.name.replace(" ", ""))
-                tmp_file = os.path.join(tmp_dir, f)
-                if self.verbose:
-                    print(tmp_file)
-                all_lyrics['artists'][-1] = artist.save_lyrics(overwrite=True)
+                all_lyrics['artists'][-1] = artist.save_lyrics(overwrite=True, folder=folder if folder else tmp_dir)
 
         # Save all of the lyrics
         with open(filename + '.json', 'w') as outfile:
             json.dump(all_lyrics, outfile)
 
         # Delete the temporary directory
-        shutil.rmtree(tmp_dir)
+        if not folder:
+            shutil.rmtree(tmp_dir)
         elapsed = (time.time() - start) / 60 / 60
         print("Time elapsed: {t} hours".format(t=elapsed))

@@ -73,14 +73,18 @@ class Artist(object):
 
     # TODO: define an export_to_json() method
 
-    def save_lyrics(self, extension='json', overwrite=False,
+    def save_lyrics(self, extension='json', folder=None, overwrite=False,
                     verbose=True, binary_encoding=False):
         """Allows user to save all lyrics within an Artist object"""
         extension = extension.lstrip(".")
         assert (extension == 'json') or (extension == 'txt'), "format_ must be JSON or TXT"
 
         for song in self.songs:
-            song.save_lyrics(extension=extension, overwrite=overwrite, verbose=verbose, binary_encoding=binary_encoding)
+            song.save_lyrics(extension=extension, 
+                                folder=folder, 
+                                overwrite=overwrite, 
+                                verbose=verbose, 
+                                binary_encoding=binary_encoding)
 
     def __str__(self):
         """Return a string representation of the Artist object."""
