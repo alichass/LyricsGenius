@@ -359,14 +359,19 @@ class Genius(API):
 
         # Extract each artist's lyrics in json format
         all_lyrics = []
-        
+        all_artists = []
+
         for artist in artists:
             if isinstance(artist, Artist):
                 all_lyrics = all_lyrics + artist.save_lyrics(overwrite=True, folder=folder if folder else tmp_dir)
+                all_artists.append(artist.get_artist_info())
 
         # Save all of the lyrics
         with open(filename + '.json', 'w') as outfile:
             json.dump(all_lyrics, outfile)
+
+        with open('artist_info_'+ filename + '.json', 'w') as outfile:
+            json.dump(all_artists, outfile)
 
         # Delete the temporary directory
         if not folder:

@@ -26,6 +26,7 @@ class Artist(object):
         self._songs = []
         self._num_songs = len(self._songs)
         self._songs_dropped = 0
+        self._extra_artist_data = None
 
     def __len__(self):
         return 1
@@ -46,6 +47,23 @@ class Artist(object):
     @property
     def num_songs(self):
         return self._num_songs
+
+    @property
+    def songs_dropped(self):
+        return self._songs_dropped
+
+    @property
+    def extra_artist_data(self):
+        return self._extra_artist_data
+
+    def change_artist_data(self, newdata):
+        if not newdata or isinstance(newdata, dict):
+            self._extra_artist_data = newdata
+
+    def get_artist_info(self):
+        if self.extra_artist_data:
+            return {'artist': self.name, **self.extra_artist_data, 'num_songs': self.num_songs, 'songs_dropped': self.songs_dropped}
+        return {'artist': self.name, 'num_songs': self.num_songs, 'songs_dropped': self.songs_dropped}
 
     def add_song(self, new_song, verbose=True):
         """Add a Song object to the Artist object"""
