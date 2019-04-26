@@ -358,11 +358,11 @@ class Genius(API):
                 return
 
         # Extract each artist's lyrics in json format
-        all_lyrics = {'artists': []}
-        for n, artist in enumerate(artists):
+        all_lyrics = []
+        
+        for artist in artists:
             if isinstance(artist, Artist):
-                all_lyrics['artists'].append({})
-                all_lyrics['artists'][-1] = artist.save_lyrics(overwrite=True, folder=folder if folder else tmp_dir)
+                all_lyrics = all_lyrics + artist.save_lyrics(overwrite=True, folder=folder if folder else tmp_dir)
 
         # Save all of the lyrics
         with open(filename + '.json', 'w') as outfile:

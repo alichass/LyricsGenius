@@ -131,13 +131,12 @@ class Song(object):
 
         # Format lyrics as either .txt or .json
         if extension == 'json':
-            lyrics_to_write = {'songs': [], 'artist': self.artist}
-            lyrics_to_write['songs'].append(self.to_dict())
+            lyrics_to_write = {'artist': self.artist, **self.to_dict()}
         else:
             lyrics_to_write = self.lyrics
-
-        if binary_encoding:
-            lyrics_to_write = lyrics_to_write.encode('utf8')
+            if binary_encoding:
+                lyrics_to_write = lyrics_to_write.encode('utf8')
+        
 
         # Write the lyrics to either a .json or .txt file
         if write_file:

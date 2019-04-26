@@ -79,12 +79,16 @@ class Artist(object):
         extension = extension.lstrip(".")
         assert (extension == 'json') or (extension == 'txt'), "format_ must be JSON or TXT"
 
+        all_songs = []
+
         for song in self.songs:
-            song.save_lyrics(extension=extension, 
+            all_songs.append(song.save_lyrics(extension=extension, 
                                 folder=folder, 
                                 overwrite=overwrite, 
                                 verbose=verbose, 
-                                binary_encoding=binary_encoding)
+                                binary_encoding=binary_encoding))
+
+        return all_songs
 
     def __str__(self):
         """Return a string representation of the Artist object."""
