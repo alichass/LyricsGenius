@@ -31,7 +31,7 @@ class API(object):
     _SLEEP_MIN = 0.2  # Enforce minimum wait time between API calls (seconds)
 
     def __init__(self, client_access_token,
-                 response_format='plain', timeout=5, sleep_time=0.5):
+                 response_format='plain', timeout=30, sleep_time=3):
         """ Genius API Constructor
 
         :param client_access_token: API key provided by Genius
@@ -111,7 +111,7 @@ class Genius(API):
     """User-level interface with the Genius.com API."""
 
     def __init__(self, client_access_token,
-                 response_format='plain', timeout=5, sleep_time=0.5,
+                 response_format='plain', timeout=30, sleep_time=3,
                  verbose=True, remove_section_headers=False,
                  skip_non_songs=True, excluded_terms=[],
                  replace_default_terms=False):
