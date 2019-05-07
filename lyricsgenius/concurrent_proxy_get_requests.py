@@ -2,9 +2,8 @@ import requests
 import re
 
 class ProxyRequests:
-    def __init__(self, url):
+    def __init__(self):
         self.sockets = []
-        self.url = url
         self.request, self.proxy = '', ''
         self.proxy_used, self.raw_content = '', ''
         self.status_code, self.try_count = 0, 15
@@ -30,7 +29,7 @@ class ProxyRequests:
         self.proxy_used = socket
 
     # recursively try proxy sockets until successful GET
-    def get(self):
+    def get(self, url):
         if len(self.sockets) > 0 and self.try_count > 0:
             current_socket = self.sockets.pop(0)
             proxies = {
@@ -39,7 +38,7 @@ class ProxyRequests:
             }
             try:
                 request = requests.get(
-                    self.url,
+                    url,
                     timeout=3.0,
                     proxies=proxies
                 )
