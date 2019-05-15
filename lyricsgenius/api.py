@@ -383,10 +383,10 @@ class Genius(API):
 
         # Save all of the lyrics
         with open(filename + '.json', 'w') as outfile:
-            json.dump(all_lyrics, outfile)
+            json.dump(all_lyrics, outfile, indent=4, separators=(',', ': '))
 
         with open('artist_info_'+ filename + '.json', 'w') as outfile:
-            json.dump(all_artists, outfile)
+            json.dump(all_artists, outfile, indent=4, separators=(',', ': '))
 
         # Delete the temporary directory
         if not folder:
