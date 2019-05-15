@@ -345,8 +345,7 @@ class Genius(API):
                 if page is None:
                     break  # Exit search when last page is reached
 
-        if self.verbose:
-            print('Done. Found {n} songs.'.format(n=artist.num_songs))
+        print('Done. Found {n} songs by {g}.'.format(n=artist.num_songs, g=artist.name))
         return artist
 
     def save_artists(self, artists, filename="artist_lyrics", overwrite=False, folder = None):
