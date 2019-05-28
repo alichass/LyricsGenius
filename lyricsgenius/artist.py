@@ -57,8 +57,10 @@ class Artist(object):
         return self._extra_artist_data
 
     def change_artist_data(self, newdata):
-        if not newdata or isinstance(newdata, dict):
-            self._extra_artist_data = newdata
+        if newdata in ['empty', 'Empty']:
+            self._extra_artist_data = None
+        if isinstance(newdata, dict):
+            self._extra_artist_data = {**self._extra_artist_data, **newdata}
 
     def get_artist_info(self):
         if self.extra_artist_data:
