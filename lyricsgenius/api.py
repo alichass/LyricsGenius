@@ -20,6 +20,8 @@ import time
 from lyricsgenius.song import Song
 from lyricsgenius.artist import Artist
 
+from multiprocessing.dummy import Pool
+
 
 class API(object):
     """Genius API"""
@@ -27,11 +29,11 @@ class API(object):
     # Create a persistent requests connection
     _session = requests.Session()
     _session.headers = {'application': 'LyricsGenius',
-       'User-Agent': 'https://github.com/johnwmillr/LyricsGenius'}
+       'User-Agent': 'https://github.com/alichass/LyricsGenius'}
     _SLEEP_MIN = 0.2  # Enforce minimum wait time between API calls (seconds)
 
     def __init__(self, client_access_token,
-                 response_format='plain', timeout=30, sleep_time=3):
+                 response_format='plain', timeout=3.0, sleep_time=0.2):
         """ Genius API Constructor
 
         :param client_access_token: API key provided by Genius
@@ -111,7 +113,7 @@ class Genius(API):
     """User-level interface with the Genius.com API."""
 
     def __init__(self, client_access_token,
-                 response_format='plain', timeout=30, sleep_time=3,
+                 response_format='plain', timeout=3.0, sleep_time=0.2,
                  verbose=True, remove_section_headers=False,
                  skip_non_songs=True, excluded_terms=[],
                  replace_default_terms=False):
@@ -135,22 +137,29 @@ class Genius(API):
         """ Use BeautifulSoup to scrape song info off of a Genius song URL
         :param url: URL for the web page to scrape lyrics from
         """
-        page = requests.get(url)
-        if page.status_code == 404:
+        # while True:
+        try:
+            page = requests.get(url, timeout=3.0)
+            if page.status_code == 404:
+                return None
+
+            # Scrape the song lyrics from the HTML
+            html = BeautifulSoup(page.text, "html.parser")
+            div = html.find("div", class_="lyrics")
+            if not div:
+                return None # Sometimes the lyrics section isn't found
+
+            # Scrape lyrics if proper section was found on page
+            lyrics = div.get_text()
+            if self.remove_section_headers:  # Remove [Verse], [Bridge], etc.
+                lyrics = re.sub('(\[.*?\])*', '', lyrics)
+                lyrics = re.sub('\n{2}', '\n', lyrics)  # Gaps between verses
+            return lyrics.strip("\n")
+        except Exception as e:
             return None
-
-        # Scrape the song lyrics from the HTML
-        html = BeautifulSoup(page.text, "html.parser")
-        div = html.find("div", class_="lyrics")
-        if not div:
-            return None # Sometimes the lyrics section isn't found
-
-        # Scrape lyrics if proper section was found on page
-        lyrics = div.get_text()
-        if self.remove_section_headers:  # Remove [Verse], [Bridge], etc.
-            lyrics = re.sub('(\[.*?\])*', '', lyrics)
-            lyrics = re.sub('\n{2}', '\n', lyrics)  # Gaps between verses
-        return lyrics.strip("\n")
+            #     if self.verbose:
+            #         print(e)
+            #     pass
 
     def _clean_str(self, s):
         """ Returns a lowercase string with punctuation and bad chars removed
@@ -246,7 +255,30 @@ class Genius(API):
             print('Done.')
         return song
 
-    def search_artist(self, artist_name, max_songs=None,
+    def _get_song_object(self, song_info):
+        # Check if song is valid (e.g. has title, contains lyrics)
+        has_title = ('title' in song_info)
+        has_lyrics = self._result_is_lyrics(song_info['title'])
+        valid = has_title and (has_lyrics or (not self.skip_non_songs))
+
+        # Reject non-song results (e.g. Linear Notes, Tracklists, etc.)
+        if not valid:
+            if self.verbose:
+                s = song_info['title'] if has_title else "MISSING TITLE"
+                print('"{s}" is not valid. Skipping.'.format(s=s))
+            return None
+        # Create the Song object from lyrics and metadata
+        lyrics = self._scrape_song_lyrics_from_url(song_info['url'])
+        if not lyrics:
+            return None
+        try:
+            info = self.get_song(song_info['id'])
+            song = Song(info, lyrics)
+            return song
+        except Exception as e:
+            return None
+
+    def search_artist(self, artist_name, max_songs=100,
                       sort='popularity', per_page=20, get_full_info=True):
         """Search Genius.com for songs by the specified artist.
         Returns an Artist object containing artist's songs.
@@ -286,36 +318,20 @@ class Genius(API):
         # Download each song by artist, stored as Song objects in Artist object
         page = 1
         reached_max_songs = False
-        while not reached_max_songs:
-            songs_on_page = self.get_artist_songs(artist_id, sort, per_page, page)
-
-            # Loop through each song on page of search results
-            for song_info in songs_on_page['songs']:
-                # Check if song is valid (e.g. has title, contains lyrics)
-                has_title = ('title' in song_info)
-                has_lyrics = self._result_is_lyrics(song_info['title'])
-                valid = has_title and (has_lyrics or (not self.skip_non_songs))
-
-                # Reject non-song results (e.g. Linear Notes, Tracklists, etc.)
-                if not valid:
-                    if self.verbose:
-                        s = song_info['title'] if has_title else "MISSING TITLE"
-                        print('"{s}" is not valid. Skipping.'.format(s=s))
-                    continue
-
-                # Create the Song object from lyrics and metadata
-                lyrics = self._scrape_song_lyrics_from_url(song_info['url'])
-                if get_full_info:
-                    info = self.get_song(song_info['id'])
-                else:
-                    info = {'song': song_info}
-                song = Song(info, lyrics)
-
-                # Attempt to add the Song to the Artist
-                result = artist.add_song(song, verbose=False)
-                if result == 0 and self.verbose:
-                    print('Song {n}: "{t}"'.format(n=artist.num_songs,
-                                                   t=song.title))
+        
+        with Pool(10) as p:
+            while not reached_max_songs:
+                songs_on_page = self.get_artist_songs(artist_id, sort, per_page, page)
+                songs_info = [song_info for song_info in songs_on_page['songs']]
+                
+                output = p.map(self._get_song_object, songs_info)
+                output = [x for x in output if x]
+                for song in output:
+                    # Attempt to add the Song to the Artist
+                    result = artist.add_song(song, verbose=False)
+                    if result == 0 and self.verbose:
+                        print('Song {n}: "{t}"'.format(n=artist.num_songs,
+                                                    t=song.title))
 
                 # Exit search if the max number of songs has been met
                 reached_max_songs = max_songs and artist.num_songs >= max_songs
@@ -324,13 +340,12 @@ class Genius(API):
                         print('\nReached user-specified song limit ({m}).'.format(m=max_songs))
                     break
 
-            # Move on to next page of search results
-            page = songs_on_page['next_page']
-            if page is None:
-                break  # Exit search when last page is reached
+                # Move on to next page of search results
+                page = songs_on_page['next_page']
+                if page is None:
+                    break  # Exit search when last page is reached
 
-        if self.verbose:
-            print('Done. Found {n} songs.'.format(n=artist.num_songs))
+        print('Done. Found {n} songs by {g}.'.format(n=artist.num_songs, g=artist.name))
         return artist
 
     def save_artists(self, artists, filename="artist_lyrics", overwrite=False, folder = None):
@@ -368,10 +383,10 @@ class Genius(API):
 
         # Save all of the lyrics
         with open(filename + '.json', 'w') as outfile:
-            json.dump(all_lyrics, outfile)
+            json.dump(all_lyrics, outfile, indent=4, separators=(',', ': '))
 
         with open('artist_info_'+ filename + '.json', 'w') as outfile:
-            json.dump(all_artists, outfile)
+            json.dump(all_artists, outfile, indent=4, separators=(',', ': '))
 
         # Delete the temporary directory
         if not folder:
