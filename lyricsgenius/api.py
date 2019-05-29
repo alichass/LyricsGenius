@@ -20,7 +20,7 @@ import time
 from lyricsgenius.song import Song
 from lyricsgenius.artist import Artist
 
-from multiprocessing.dummy import Pool
+from pathos.multiprocessing import ProcessingPool as Pool
 
 
 class API(object):
